@@ -1,0 +1,183 @@
+---
+title: "DZ_3"
+output: html_document
+date: "2024-03-29"
+---
+
+```{=html}
+<style type="text/css">
+body{
+  font-family: Helvetica;
+  font-size: 12pt;
+}
+/* Headers */
+h1, h2{
+  font-size: 16pt;
+}
+</style>
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	include = FALSE
+)
+```
+
+# Домашнее задание 3
+
+**Тема:** расчет описательных статистик.
+
+**Цель:** научиться считать описательные статистики для количественной и категориальной переменных, строить доверительный интервал, а также графики плотности вероятности.
+
+## Загрузка библиотек
+
+```{r}
+install.packages("tidyverse")
+install.packages("readxl")
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+```{r}
+getwd()
+```
+
+## Загрузка датасета pima
+
+```{r data, include=TRUE}
+pima <- read_excel(path = 'pima.xlsx')
+```
+
+## Преобразование данных
+
+```{r data, include=TRUE}
+pima <- na.omit(pima)
+pima <- pima %>%
+    mutate_at(vars(diabetes), as.factor)
+```
+
+#### 1. Рассчитайте описательные статистики для переменных glucose, pressure, mass.
+
+```{r stat num, include=TRUE}
+# Расчет основных статистик:
+glucose_sum <- summary(pima$glucose)
+pressure_sum <- summary(pima$pressure)
+mass_sum <- summary(pima$mass)
+
+# Расчет стандартного отклонения:
+glucose_sd <- sd(pima$glucose, na.rm = TRUE)
+pressure_sd <- sd(pima$pressure, na.rm = TRUE)
+mass_sd <- sd(pima$mass, na.rm = TRUE)
+
+# Вывод результатов:
+glucose_sum
+pressure_sum
+mass_sum
+
+glucose_sd
+pressure_sd
+mass_sd
+```
+
+
+#### 2. Рассчитайте описательную статистику для переменной diabetes.
+Создайте на основе переменной age новую переменную age_group, которая будет отражать следующие возрастные группы: 21–35, 36–49 и 50+. Посчитайте описательную статистику для новой переменной.
+
+
+```{r stat factor, include=TRUE}
+# Вычисление абсолютных частот:
+abs_frequencies <- table(pima$diabetes)
+
+# Вычисление относительных частот:
+rel_frequencies <- prop.table(abs_frequencies) * 100
+
+# Вывод результатов:
+abs_frequencies
+rel_frequencies
+```
+
+```{r new_group, include=TRUE}
+# Создание переменных для различных возрастных групп
+pima <- pima %>%
+  mutate(age_group = ifelse(age <= 35, "21-35",
+  ifelse(age <= 49, "36-49", "50+")))
+
+pima <- mutate(pima, age_group = as.factor(age_group))
+
+abs_age <- table(pima$age_group)
+rel_age <- (abs_age / length(pima$age_group)) * 100
+
+abs_age
+rel_age
+```
+#### 3. Определите 90% доверительный интервал для переменной pedigree. 
+```{r interval, include=TRUE}
+mean_pedigree <- mean(pima$pedigree)
+sd_pedigree <- sd(pima$pedigree)
+se_pedigree <- sd_pedigree / sqrt(length(pima$pedigree))
+
+alpha <- 0.1
+df <- length(pima$pedigree) - 1
+t <- qt(alpha / 2, df, lower.tail = F)
+
+pedigree_intrvl <- c(mean_pedigree - t * se_pedigree,
+                      mean_pedigree + t * se_pedigree)
+
+pedigree_intrvl
+```
+
+#### 4. Постройте график плотности вероятности для переменной glucose и отметьте на нем среднее значение. Для той же переменной постройте гистограмму. Постройте два ящика с усами для значений pos и neg соответственно переменной diabetes.
+
+```{r dens, include=TRUE}
+# Построение графика плотности
+density <- ggplot(data = pima) +
+  geom_density(aes(glucose)) +
+  geom_vline(xintercept = mean(pima$glucose), color = 'blue') +
+  labs(title = "График плотности вероятности глюкозы")
+print(density)
+```
+```{r hist, include=TRUE}
+# Построение гистограммы
+hist_glu <- hist(pima$glucose,
+  breaks = 50,
+  main = "Распределение глюкозы",
+  xlab = "glucose")
+
+print(hist_glu)
+```
+
+
+```{r boxplot, include=TRUE}
+# Построение boxplot
+box_diabet <- ggplot(data = pima) +
+  geom_boxplot(aes(diabetes, glucose, fill = diabetes)) +
+  labs(title = "Распределение вероятности диабета")
+print(box_diabet)
+```
+
+#### 5. Постройте на одном графике две диаграммы рассеяния для наличия или отсутствия диабета. 
+По оси X представьте значения обхвата трицепса, а по оси Y — массу тела. 
+Выполните окрашивание, заливку и группирование по переменной diabetes. 
+```{r facet, include=TRUE}
+# Удаление строк, где есть нулевые значения обхвата трицепса или массы тела
+pima_clean <- subset(pima, triceps != 0 & mass != 0)
+
+# Построение диаграммы рассеивания
+availability <- ggplot(data = pima_clean,
+                aes(x = triceps, y = mass)) +
+  geom_point(color = "black", shape = 21, size = 4,
+             aes(fill = factor(pima_clean$diabetes))) +
+  scale_fill_manual(values = c("green", "yellow")) +
+  facet_grid(. ~ diabetes) +
+  labs(title = "Диаграмма рассеяния диабета",
+       x = "обхват трицепса", y = "масса тела") +
+  theme_light()
+
+print(availability)
+```
+
+
